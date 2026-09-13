@@ -1,5 +1,5 @@
--- [[ LiquidGlass UI Library (Bug-Free 1:1 Pixel-Perfect Engine) ]]
--- Fixed Font Tween Crash & Invalid Sound IDs
+-- [[ LiquidGlass UI Library (Ultra-Detailed 1:1 Liquid Glass Engine) ]]
+-- Repository: https://github.com/megapxzeeoh/test2/blob/main/LiquidGlass.lua
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local LiquidGlass = {
-    Version = "8.0.0",
+    Version = "9.0.0",
     Flags = {},
     Keybinds = {
         ["Infinite Jump"] = { Key = Enum.KeyCode.Space, Toggle = nil },
@@ -19,7 +19,7 @@ local LiquidGlass = {
         ["Triggerbot"] = { Key = nil, Toggle = nil }
     },
     CurrentListening = nil,
-    ActiveFeatureCount = 3
+    ActiveToasts = {}
 }
 
 -- Инициализация ScreenGui
@@ -61,7 +61,7 @@ local Icons = {
     bell = "rbxassetid://10709753149"
 }
 
--- Цветовая схема Liquid Glass
+-- Цвета темы (Deep Navy Glass)
 local Theme = {
     MainGlass = Color3.fromRGB(15, 23, 42),
     MainTransparency = 0.12,
@@ -84,6 +84,7 @@ local function tween(object, properties, duration, style, direction)
     return anim
 end
 
+-- Объемный Liquid Glass эффект (Многослойные блики и градиенты)
 local function applyGlass(instance, cornerRadius, strokeTransparency)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = cornerRadius or UDim.new(0, 16)
@@ -109,6 +110,21 @@ local function applyGlass(instance, cornerRadius, strokeTransparency)
         NumberSequenceKeypoint.new(1, 0.95)
     })
     strokeGradient.Parent = stroke
+
+    -- Внутренний световой объемный блик
+    local innerGloss = Instance.new("UIGradient")
+    innerGloss.Rotation = 90
+    innerGloss.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(180, 190, 210)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 15, 25))
+    })
+    innerGloss.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.85),
+        NumberSequenceKeypoint.new(0.3, 0.95),
+        NumberSequenceKeypoint.new(1, 0.98)
+    })
+    innerGloss.Parent = instance
 
     return stroke
 end
@@ -178,7 +194,7 @@ local function makeResizable(frame, handle, minWidth, minHeight)
     end)
 end
 
--- Безопасная функция воспроизведения звуков
+-- Звуковой движок (Айфоновские звуки)
 local function playSound(type)
     pcall(function()
         local s = Instance.new("Sound")
@@ -197,8 +213,16 @@ local function playSound(type)
             s.Volume = 0.7
         elseif type == "Tap" then
             s.SoundId = "rbxassetid://9119713951"
+            s.PlaybackSpeed = 1.0
+        elseif type == "Tick" then
+            s.SoundId = "rbxassetid://9119713951"
+            s.PlaybackSpeed = 1.8
+            s.Volume = 0.2
         elseif type == "Island" then
             s.SoundId = "rbxassetid://6895079853"
+            s.PlaybackSpeed = 1.4
+        elseif type == "Chime" then
+            s.SoundId = "rbxassetid://9114223175"
             s.PlaybackSpeed = 1.3
         end
 
@@ -207,7 +231,7 @@ local function playSound(type)
     end)
 end
 
--- ================= ИНТРО APPLE "HELLO" =================
+-- Интро Apple "hello"
 function LiquidGlass:PlayIntro()
     local bootScreen = Instance.new("Frame")
     bootScreen.Size = UDim2.new(1, 0, 1, 0)
@@ -252,8 +276,10 @@ function LiquidGlass:PlayIntro()
 end
 task.spawn(function() LiquidGlass:PlayIntro() end)
 
--- ================= УВЕДОМЛЕНИЯ =================
+-- ================= СТЕК СТЕКЛЯННЫХ УВЕДОМЛЕНИЙ =================
 function LiquidGlass:Notify(title, desc)
+    playSound("Chime")
+
     local toast = Instance.new("Frame")
     toast.Size = UDim2.new(0, 280, 0, 56)
     toast.Position = UDim2.new(1, 20, 1, -76)
@@ -297,9 +323,21 @@ function LiquidGlass:Notify(title, desc)
     dLbl.ZIndex = 91
     dLbl.Parent = toast
 
-    tween(toast, {Position = UDim2.new(1, -300, 1, -76)}, 0.45, Enum.EasingStyle.Back)
-    task.delay(3, function()
-        local out = tween(toast, {Position = UDim2.new(1, 20, 1, -76), BackgroundTransparency = 1}, 0.35)
+    -- Сдвиг всех существующих уведомлений вверх (Stacking)
+    table.insert(LiquidGlass.ActiveToasts, 1, toast)
+    for i, t in ipairs(LiquidGlass.ActiveToasts) do
+        local targetY = -76 - ((i - 1) * 66)
+        tween(t, {Position = UDim2.new(1, -300, 1, targetY)}, 0.4, Enum.EasingStyle.Back)
+    end
+
+    task.delay(3.2, function()
+        for i, t in ipairs(LiquidGlass.ActiveToasts) do
+            if t == toast then
+                table.remove(LiquidGlass.ActiveToasts, i)
+                break
+            end
+        end
+        local out = tween(toast, {Position = UDim2.new(1, 20, toast.Position.Y.Scale, toast.Position.Y.Offset), BackgroundTransparency = 1}, 0.35)
         out.Completed:Connect(function() toast:Destroy() end)
     end)
 end
@@ -413,20 +451,52 @@ function LiquidGlass:CreateWindow(config)
     MainFrame.Parent = ScreenGui
     applyGlass(MainFrame, UDim.new(0, 20), 0.7)
 
-    -- Dynamic Island
+    -- ================= DYNAMIC ISLAND (Apple 1:1) =================
     local Island = Instance.new("Frame")
     Island.Name = "DynamicIsland"
-    Island.Size = UDim2.new(0, 215, 0, 36)
-    Island.Position = UDim2.new(0.5, -107, 0, 14)
+    Island.Size = UDim2.new(0, 225, 0, 38)
+    Island.Position = UDim2.new(0.5, -112, 0, 14)
     Island.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Island.Visible = false
     Island.ZIndex = 100
     Island.Parent = ScreenGui
     applyGlass(Island, UDim.new(1, 0), 0.3)
 
+    -- Аппаратные вырезы TrueDepth (Камера + датчик)
+    local IslandCam = Instance.new("Frame")
+    IslandCam.Size = UDim2.new(0, 10, 0, 10)
+    IslandCam.Position = UDim2.new(0, 10, 0.5, -5)
+    IslandCam.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+    IslandCam.ZIndex = 101
+    IslandCam.Parent = Island
+    local camCorner = Instance.new("UICorner")
+    camCorner.CornerRadius = UDim.new(1, 0)
+    camCorner.Parent = IslandCam
+
+    local camGlint = Instance.new("Frame")
+    camGlint.Size = UDim2.new(0, 3, 0, 3)
+    camGlint.Position = UDim2.new(0, 2, 0, 2)
+    camGlint.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+    camGlint.ZIndex = 102
+    camGlint.Parent = IslandCam
+    local glintCorner = Instance.new("UICorner")
+    glintCorner.CornerRadius = UDim.new(1, 0)
+    glintCorner.Parent = camGlint
+
+    local IslandSensor = Instance.new("Frame")
+    IslandSensor.Size = UDim2.new(0, 6, 0, 6)
+    IslandSensor.Position = UDim2.new(0, 24, 0.5, -3)
+    IslandSensor.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
+    IslandSensor.ZIndex = 101
+    IslandSensor.Parent = Island
+    local sensCorner = Instance.new("UICorner")
+    sensCorner.CornerRadius = UDim.new(1, 0)
+    sensCorner.Parent = IslandSensor
+
+    -- Аватар в белом ободке
     local IslandAvatar = Instance.new("ImageLabel")
-    IslandAvatar.Size = UDim2.new(0, 22, 0, 22)
-    IslandAvatar.Position = UDim2.new(0, 26, 0.5, -11)
+    IslandAvatar.Size = UDim2.new(0, 24, 0, 24)
+    IslandAvatar.Position = UDim2.new(0, 36, 0.5, -12)
     IslandAvatar.BackgroundTransparency = 1
     IslandAvatar.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
     IslandAvatar.ZIndex = 101
@@ -434,10 +504,15 @@ function LiquidGlass:CreateWindow(config)
     local avCorner = Instance.new("UICorner")
     avCorner.CornerRadius = UDim.new(1, 0)
     avCorner.Parent = IslandAvatar
+    local avStroke = Instance.new("UIStroke")
+    avStroke.Color = Color3.fromRGB(255, 255, 255)
+    avStroke.Transparency = 0.6
+    avStroke.Thickness = 1
+    avStroke.Parent = IslandAvatar
 
     local IslandUser = Instance.new("TextLabel")
-    IslandUser.Size = UDim2.new(0, 85, 0, 14)
-    IslandUser.Position = UDim2.new(0, 54, 0, 5)
+    IslandUser.Size = UDim2.new(0, 100, 0, 14)
+    IslandUser.Position = UDim2.new(0, 66, 0, 6)
     IslandUser.BackgroundTransparency = 1
     IslandUser.Font = Enum.Font.GothamBold
     IslandUser.Text = "@" .. LocalPlayer.Name
@@ -448,50 +523,60 @@ function LiquidGlass:CreateWindow(config)
     IslandUser.Parent = Island
 
     local IslandStatus = Instance.new("TextLabel")
-    IslandStatus.Size = UDim2.new(0, 85, 0, 12)
-    IslandStatus.Position = UDim2.new(0, 54, 0, 19)
+    IslandStatus.Size = UDim2.new(0, 100, 0, 12)
+    IslandStatus.Position = UDim2.new(0, 66, 0, 20)
     IslandStatus.BackgroundTransparency = 1
     IslandStatus.Font = Enum.Font.GothamMedium
     IslandStatus.Text = "● Active"
     IslandStatus.TextColor3 = Theme.Success
-    IslandStatus.TextSize = 9
+    IslandStatus.TextSize = 9.5
     IslandStatus.TextXAlignment = Enum.TextXAlignment.Left
     IslandStatus.ZIndex = 101
     IslandStatus.Parent = Island
 
+    -- Анимированная звуковая волна
     local waveContainer = Instance.new("Frame")
     waveContainer.Size = UDim2.new(0, 16, 0, 14)
-    waveContainer.Position = UDim2.new(1, -26, 0.5, -7)
+    waveContainer.Position = UDim2.new(1, -28, 0.5, -7)
     waveContainer.BackgroundTransparency = 1
     waveContainer.ZIndex = 101
     waveContainer.Parent = Island
 
     local wb1 = Instance.new("Frame")
-    wb1.Size = UDim2.new(0, 2, 0, 6)
+    wb1.Size = UDim2.new(0, 2.5, 0, 6)
     wb1.Position = UDim2.new(0, 0, 0.5, -3)
     wb1.BackgroundColor3 = Theme.Success
     wb1.ZIndex = 101
     wb1.Parent = waveContainer
+    local wc1 = Instance.new("UICorner")
+    wc1.CornerRadius = UDim.new(1, 0)
+    wc1.Parent = wb1
 
     local wb2 = Instance.new("Frame")
-    wb2.Size = UDim2.new(0, 2, 0, 12)
+    wb2.Size = UDim2.new(0, 2.5, 0, 12)
     wb2.Position = UDim2.new(0, 5, 0.5, -6)
     wb2.BackgroundColor3 = Theme.Success
     wb2.ZIndex = 101
     wb2.Parent = waveContainer
+    local wc2 = Instance.new("UICorner")
+    wc2.CornerRadius = UDim.new(1, 0)
+    wc2.Parent = wb2
 
     local wb3 = Instance.new("Frame")
-    wb3.Size = UDim2.new(0, 2, 0, 8)
+    wb3.Size = UDim2.new(0, 2.5, 0, 8)
     wb3.Position = UDim2.new(0, 10, 0.5, -4)
     wb3.BackgroundColor3 = Theme.Success
     wb3.ZIndex = 101
     wb3.Parent = waveContainer
+    local wc3 = Instance.new("UICorner")
+    wc3.CornerRadius = UDim.new(1, 0)
+    wc3.Parent = wb3
 
     task.spawn(function()
         while true do
-            tween(wb1, {Size = UDim2.new(0, 2, 0, math.random(4, 12))}, 0.25)
-            tween(wb2, {Size = UDim2.new(0, 2, 0, math.random(4, 14))}, 0.25)
-            tween(wb3, {Size = UDim2.new(0, 2, 0, math.random(4, 10))}, 0.25)
+            tween(wb1, {Size = UDim2.new(0, 2.5, 0, math.random(4, 12))}, 0.25)
+            tween(wb2, {Size = UDim2.new(0, 2.5, 0, math.random(4, 14))}, 0.25)
+            tween(wb3, {Size = UDim2.new(0, 2.5, 0, math.random(4, 10))}, 0.25)
             task.wait(0.25)
         end
     end)
@@ -651,7 +736,7 @@ function LiquidGlass:CreateWindow(config)
     UserTag.ZIndex = 13
     UserTag.Parent = UserCard
 
-    -- Контейнер страниц контента
+    -- Контейнер страниц контента (С правильными размерами)
     local PageContainer = Instance.new("Frame")
     PageContainer.Name = "PageContainer"
     PageContainer.Size = UDim2.new(0, 554, 0, 452)
@@ -668,7 +753,7 @@ function LiquidGlass:CreateWindow(config)
             playSound("Island")
             Island.Visible = true
             tween(MainFrame, {Position = UDim2.new(0.5, -400, 0, -600), BackgroundTransparency = 1}, 0.5)
-            tween(Island, {Size = UDim2.new(0, 215, 0, 36)}, 0.45, Enum.EasingStyle.Back)
+            tween(Island, {Size = UDim2.new(0, 225, 0, 38)}, 0.45, Enum.EasingStyle.Back)
         else
             playSound("Island")
             tween(MainFrame, {Position = UDim2.new(0.5, -400, 0.5, -260), BackgroundTransparency = Theme.MainTransparency}, 0.5)
@@ -719,6 +804,12 @@ function LiquidGlass:CreateWindow(config)
         pLayout.SortOrder = Enum.SortOrder.LayoutOrder
         pLayout.Parent = Page
 
+        local pPadding = Instance.new("UIPadding")
+        pPadding.PaddingTop = UDim.new(0, 4)
+        pPadding.PaddingBottom = UDim.new(0, 16)
+        pPadding.PaddingRight = UDim.new(0, 8)
+        pPadding.Parent = Page
+
         pLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             Page.CanvasSize = UDim2.new(0, 0, 0, pLayout.AbsoluteContentSize.Y + 30)
         end)
@@ -756,7 +847,6 @@ function LiquidGlass:CreateWindow(config)
         TabTitle.ZIndex = 14
         TabTitle.Parent = TabBtn
 
-        -- ИСПРАВЛЕННАЯ ФУНКЦИЯ АКТИВАЦИИ ТАБА БЕЗ TWEEN FONT
         local function activate()
             playSound("Tap")
             for _, t in pairs(Window.Tabs) do
@@ -786,7 +876,7 @@ function LiquidGlass:CreateWindow(config)
         function Tab:CreateSection(text)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
             local SecLbl = Instance.new("TextLabel")
-            SecLbl.Size = UDim2.new(1, 0, 0, 18)
+            SecLbl.Size = UDim2.new(1, 0, 0, 20)
             SecLbl.BackgroundTransparency = 1
             SecLbl.Font = Enum.Font.GothamBold
             SecLbl.Text = string.upper(text)
@@ -811,7 +901,7 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, -10, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
@@ -845,6 +935,7 @@ function LiquidGlass:CreateWindow(config)
                 dLbl.Parent = Frame
             end
 
+            -- Кнопка Кейбинда
             local BindBtn = Instance.new("TextButton")
             BindBtn.Size = UDim2.new(0, 52, 0, 24)
             BindBtn.Position = UDim2.new(1, -114, 0.5, -12)
@@ -858,6 +949,7 @@ function LiquidGlass:CreateWindow(config)
             BindBtn.Parent = Frame
             applyGlass(BindBtn, UDim.new(0, 8), 0.8)
 
+            -- Свитч
             local Switch = Instance.new("TextButton")
             Switch.Size = UDim2.new(0, 44, 0, 24)
             Switch.Position = UDim2.new(1, -54, 0.5, -12)
@@ -926,7 +1018,7 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, -10, 0, 72)
+            Frame.Size = UDim2.new(1, -6, 0, 72)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
@@ -1011,11 +1103,16 @@ function LiquidGlass:CreateWindow(config)
             tCorner.Parent = Thumb
 
             local dragging = false
+            local lastSoundVal = Def
             local function updateSlider(input)
                 local pct = math.clamp((input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
                 local val = math.floor(Min + (Max - Min) * pct)
                 Fill.Size = UDim2.new(pct, 0, 1, 0)
                 Badge.Text = tostring(val) .. " " .. Unit
+                if math.abs(val - lastSoundVal) >= 2 then
+                    playSound("Tick")
+                    lastSoundVal = val
+                end
                 if Flag then LiquidGlass.Flags[Flag] = val end
                 pcall(Callback, val)
             end
@@ -1045,7 +1142,7 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, -10, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.ClipsDescendants = true
@@ -1094,12 +1191,31 @@ function LiquidGlass:CreateWindow(config)
             Chevron.ZIndex = 14
             Chevron.Parent = Header
 
+            -- Внутренняя панель поднастроек
+            local Drawer = Instance.new("Frame")
+            Drawer.Size = UDim2.new(1, 0, 0, 160)
+            Drawer.Position = UDim2.new(0, 0, 0, 56)
+            Drawer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            Drawer.BackgroundTransparency = 0.78
+            Drawer.ZIndex = 13
+            Drawer.Parent = Frame
+
+            local dLayout = Instance.new("UIListLayout")
+            dLayout.Padding = UDim.new(0, 8)
+            dLayout.Parent = Drawer
+
+            local dPadding = Instance.new("UIPadding")
+            dPadding.PaddingLeft = UDim.new(0, 16)
+            dPadding.PaddingRight = UDim.new(0, 16)
+            dPadding.PaddingTop = UDim.new(0, 8)
+            dPadding.Parent = Drawer
+
             local isExpanded = false
             Header.MouseButton1Click:Connect(function()
                 playSound("Tap")
                 isExpanded = not isExpanded
                 tween(Chevron, {Rotation = isExpanded and 180 or 0}, 0.3)
-                tween(Frame, {Size = isExpanded and UDim2.new(1, -10, 0, 220) or UDim2.new(1, -10, 0, 56)}, 0.35)
+                tween(Frame, {Size = isExpanded and UDim2.new(1, -6, 0, 220) or UDim2.new(1, -6, 0, 56)}, 0.35)
             end)
 
             table.insert(Tab.Elements, { Frame = Frame, Name = "Aimbot Assistant" })
@@ -1116,7 +1232,7 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, -10, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
@@ -1187,7 +1303,7 @@ function LiquidGlass:CreateWindow(config)
         return Tab
     end
 
-    -- АВТОМАТИЧЕСКОЕ НАПОЛНЕНИЕ ВСЕХ 6 ВКЛАДОК (1:1 UI.html)
+    -- Автоматическое наполнение всех 6 вкладок (1:1 к макету)
     task.spawn(function()
         -- 1. General
         local GeneralTab = Window:CreateTab({ Name = "General", Icon = Icons.home })
@@ -1496,7 +1612,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Глобальный обработчик кейбиндов
+-- Кейбинды
 UserInputService.InputBegan:Connect(function(input, gp)
     if LiquidGlass.CurrentListening then
         if input.UserInputType == Enum.UserInputType.Keyboard then
