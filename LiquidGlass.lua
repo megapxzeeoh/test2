@@ -1,5 +1,5 @@
--- [[ LiquidGlass UI Library (100% Standalone Fixed Engine) ]]
--- Direct Port of UI.html with Zero-Collapse Geometry
+-- [[ LiquidGlass UI Library (Bug-Free 1:1 Pixel-Perfect Engine) ]]
+-- Fixed Font Tween Crash & Invalid Sound IDs
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local LiquidGlass = {
-    Version = "7.0.0",
+    Version = "8.0.0",
     Flags = {},
     Keybinds = {
         ["Infinite Jump"] = { Key = Enum.KeyCode.Space, Toggle = nil },
@@ -18,12 +18,13 @@ local LiquidGlass = {
         ["Aimbot Assistant"] = { Key = Enum.UserInputType.MouseButton2, Toggle = nil },
         ["Triggerbot"] = { Key = nil, Toggle = nil }
     },
-    CurrentListening = nil
+    CurrentListening = nil,
+    ActiveFeatureCount = 3
 }
 
 -- Инициализация ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LiquidGlass_Core"
+ScreenGui.Name = "LiquidGlass_MasterCore"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -60,7 +61,7 @@ local Icons = {
     bell = "rbxassetid://10709753149"
 }
 
--- Цвета Liquid Glass
+-- Цветовая схема Liquid Glass
 local Theme = {
     MainGlass = Color3.fromRGB(15, 23, 42),
     MainTransparency = 0.12,
@@ -177,32 +178,36 @@ local function makeResizable(frame, handle, minWidth, minHeight)
     end)
 end
 
+-- Безопасная функция воспроизведения звуков
 local function playSound(type)
-    local s = Instance.new("Sound")
-    s.Volume = 0.5
-    s.Parent = ScreenGui
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.Volume = 0.5
+        s.Parent = ScreenGui
 
-    if type == "5Bell" then
-        s.SoundId = "rbxassetid://9114223175"
-        s.PlaybackSpeed = 1.05
-    elseif type == "3Bell" then
-        s.SoundId = "rbxassetid://9114223408"
-        s.PlaybackSpeed = 0.95
-    elseif type == "Intro" then
-        s.SoundId = "rbxassetid://9114223686"
-        s.Volume = 0.7
-    elseif type == "Tap" then
-        s.SoundId = "rbxassetid://9119713951"
-    elseif type == "Island" then
-        s.SoundId = "rbxassetid://6895079853"
-        s.PlaybackSpeed = 1.3
-    end
+        if type == "5Bell" then
+            s.SoundId = "rbxassetid://9114223175"
+            s.PlaybackSpeed = 1.05
+        elseif type == "3Bell" then
+            s.SoundId = "rbxassetid://9114223408"
+            s.PlaybackSpeed = 0.95
+        elseif type == "Intro" then
+            s.SoundId = "rbxassetid://9119713951"
+            s.PlaybackSpeed = 0.8
+            s.Volume = 0.7
+        elseif type == "Tap" then
+            s.SoundId = "rbxassetid://9119713951"
+        elseif type == "Island" then
+            s.SoundId = "rbxassetid://6895079853"
+            s.PlaybackSpeed = 1.3
+        end
 
-    s:Play()
-    s.Ended:Connect(function() s:Destroy() end)
+        s:Play()
+        s.Ended:Connect(function() s:Destroy() end)
+    end)
 end
 
--- Интро Apple "hello"
+-- ================= ИНТРО APPLE "HELLO" =================
 function LiquidGlass:PlayIntro()
     local bootScreen = Instance.new("Frame")
     bootScreen.Size = UDim2.new(1, 0, 1, 0)
@@ -231,7 +236,8 @@ function LiquidGlass:PlayIntro()
         if dismissed then return end
         dismissed = true
         tween(bootScreen, {BackgroundTransparency = 1}, 0.4)
-        tween(helloLabel, {TextTransparency = 1, TextSize = 85}, 0.4).Completed:Connect(function()
+        local t = tween(helloLabel, {TextTransparency = 1, TextSize = 85}, 0.4)
+        t.Completed:Connect(function()
             bootScreen:Destroy()
         end)
     end
@@ -246,7 +252,7 @@ function LiquidGlass:PlayIntro()
 end
 task.spawn(function() LiquidGlass:PlayIntro() end)
 
--- Уведомления
+-- ================= УВЕДОМЛЕНИЯ =================
 function LiquidGlass:Notify(title, desc)
     local toast = Instance.new("Frame")
     toast.Size = UDim2.new(0, 280, 0, 56)
@@ -298,7 +304,7 @@ function LiquidGlass:Notify(title, desc)
     end)
 end
 
--- Диалог подтверждения
+-- ================= ДИАЛОГ ПОДТВЕРЖДЕНИЯ =================
 local function openConfirmDialog(title, desc, onConfirm)
     playSound("3Bell")
     local backdrop = Instance.new("Frame")
@@ -453,7 +459,6 @@ function LiquidGlass:CreateWindow(config)
     IslandStatus.ZIndex = 101
     IslandStatus.Parent = Island
 
-    -- Анимация волн в Dynamic Island
     local waveContainer = Instance.new("Frame")
     waveContainer.Size = UDim2.new(0, 16, 0, 14)
     waveContainer.Position = UDim2.new(1, -26, 0.5, -7)
@@ -545,7 +550,7 @@ function LiquidGlass:CreateWindow(config)
     TitleLabel.ZIndex = 12
     TitleLabel.Parent = TopBar
 
-    -- Сайдбар (Прямой дочерний элемент MainFrame)
+    -- Сайдбар
     local Sidebar = Instance.new("Frame")
     Sidebar.Size = UDim2.new(0, 200, 0, 452)
     Sidebar.Position = UDim2.new(0, 16, 0, 52)
@@ -646,7 +651,7 @@ function LiquidGlass:CreateWindow(config)
     UserTag.ZIndex = 13
     UserTag.Parent = UserCard
 
-    -- Контейнер страниц контента (Прямой дочерний элемент MainFrame с четкими размерами)
+    -- Контейнер страниц контента
     local PageContainer = Instance.new("Frame")
     PageContainer.Name = "PageContainer"
     PageContainer.Size = UDim2.new(0, 554, 0, 452)
@@ -751,17 +756,20 @@ function LiquidGlass:CreateWindow(config)
         TabTitle.ZIndex = 14
         TabTitle.Parent = TabBtn
 
+        -- ИСПРАВЛЕННАЯ ФУНКЦИЯ АКТИВАЦИИ ТАБА БЕЗ TWEEN FONT
         local function activate()
             playSound("Tap")
             for _, t in pairs(Window.Tabs) do
                 tween(t.Btn, {BackgroundTransparency = 1}, 0.2)
-                tween(t.Title, {TextColor3 = Theme.SubText, Font = Enum.Font.GothamMedium}, 0.2)
+                t.Title.Font = Enum.Font.GothamMedium
+                tween(t.Title, {TextColor3 = Theme.SubText}, 0.2)
                 tween(t.Icon, {ImageColor3 = Theme.SubText}, 0.2)
                 t.Page.Visible = false
             end
             Page.Visible = true
             tween(TabBtn, {BackgroundTransparency = 0.85}, 0.2)
-            tween(TabTitle, {TextColor3 = Theme.Text, Font = Enum.Font.GothamBold}, 0.2)
+            TabTitle.Font = Enum.Font.GothamBold
+            tween(TabTitle, {TextColor3 = Theme.Text}, 0.2)
             tween(TabIcon, {ImageColor3 = Theme.Text}, 0.2)
             Window.ActiveTab = Tab
         end
@@ -837,7 +845,6 @@ function LiquidGlass:CreateWindow(config)
                 dLbl.Parent = Frame
             end
 
-            -- Кнопка Кейбинда
             local BindBtn = Instance.new("TextButton")
             BindBtn.Size = UDim2.new(0, 52, 0, 24)
             BindBtn.Position = UDim2.new(1, -114, 0.5, -12)
@@ -851,7 +858,6 @@ function LiquidGlass:CreateWindow(config)
             BindBtn.Parent = Frame
             applyGlass(BindBtn, UDim.new(0, 8), 0.8)
 
-            -- Свитч
             local Switch = Instance.new("TextButton")
             Switch.Size = UDim2.new(0, 44, 0, 24)
             Switch.Position = UDim2.new(1, -54, 0.5, -12)
@@ -1181,9 +1187,9 @@ function LiquidGlass:CreateWindow(config)
         return Tab
     end
 
-    -- АВТОМАТИЧЕСКАЯ ПОЛНАЯ СБОРКА ИНТЕРФЕЙСА (1:1 UI.html)
+    -- АВТОМАТИЧЕСКОЕ НАПОЛНЕНИЕ ВСЕХ 6 ВКЛАДОК (1:1 UI.html)
     task.spawn(function()
-        -- Tab 1: General
+        -- 1. General
         local GeneralTab = Window:CreateTab({ Name = "General", Icon = Icons.home })
         GeneralTab:CreateSection("Player Physics & Attributes")
         GeneralTab:CreateToggle({
@@ -1230,7 +1236,7 @@ function LiquidGlass:CreateWindow(config)
             end
         })
 
-        -- Tab 2: Combat
+        -- 2. Combat
         local CombatTab = Window:CreateTab({ Name = "Combat", Icon = Icons.swords })
         CombatTab:CreateSection("Combat Modifiers & Sub-Settings")
         CombatTab:CreateAimbotAccordion()
@@ -1240,23 +1246,23 @@ function LiquidGlass:CreateWindow(config)
             Default = false
         })
 
-        -- Tab 3: Visuals
+        -- 3. Visuals
         local VisualsTab = Window:CreateTab({ Name = "Visuals", Icon = Icons.palette })
         VisualsTab:CreateSection("Chroma & Visual Modifications")
         VisualsTab:CreateToggle({ Name = "Player ESP", Description = "Draw 3D bounding boxes around players", Default = true })
 
-        -- Tab 4: Configs
+        -- 4. Configs
         local ConfigsTab = Window:CreateTab({ Name = "Configs", Icon = Icons.folder })
         ConfigsTab:CreateSection("Saved Profiles")
         ConfigsTab:CreateButton({ Name = "Save Current Profile", Callback = function() LiquidGlass:Notify("Configs", "Saved successfully!") end })
 
-        -- Tab 5: Sub-Windows
+        -- 5. Sub-Windows
         local SubWindowsTab = Window:CreateTab({ Name = "Sub-Windows", Icon = Icons.appwindow })
         SubWindowsTab:CreateSection("Floating Widgets")
         SubWindowsTab:CreateToggle({ Name = "Keybinds Overlay", Default = true })
         SubWindowsTab:CreateToggle({ Name = "Telemetry Widget", Default = true })
 
-        -- Tab 6: Misc
+        -- 6. Misc
         local MiscTab = Window:CreateTab({ Name = "Misc", Icon = Icons.sliders })
         MiscTab:CreateSection("System Miscellaneous")
         MiscTab:CreateButton({ Name = "Replay Apple 'hello' Intro", Callback = function() LiquidGlass:PlayIntro() end })
