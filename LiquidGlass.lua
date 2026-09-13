@@ -1,4 +1,4 @@
--- [[ LiquidGlass UI Library (100% 1:1 Complete HTML Port) ]]
+-- [[ LiquidGlass UI Library (100% 1:1 Pixel-Perfect Standalone Engine) ]]
 -- Repository: https://github.com/megapxzeeoh/test2/blob/main/LiquidGlass.lua
 
 local TweenService = game:GetService("TweenService")
@@ -11,14 +11,9 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local LiquidGlass = {
-    Version = "4.0.0",
+    Version = "5.0.0",
     Flags = {},
-    Keybinds = {
-        ["Infinite Jump"] = { Key = Enum.KeyCode.Space, Toggle = nil },
-        ["Noclip Mode"] = { Key = Enum.KeyCode.V, Toggle = nil },
-        ["Aimbot Assistant"] = { Key = Enum.UserInputType.MouseButton2, Toggle = nil },
-        ["Triggerbot"] = { Key = nil, Toggle = nil }
-    },
+    Keybinds = {},
     CurrentListening = nil,
     ActiveFeatureCount = 3
 }
@@ -41,7 +36,7 @@ pcall(function()
 end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Таблица иконок Lucide
+-- Иконки Lucide
 local Icons = {
     home = "rbxassetid://10723407389",
     swords = "rbxassetid://10734975486",
@@ -57,22 +52,20 @@ local Icons = {
     activity = "rbxassetid://10709768644",
     play = "rbxassetid://10734923549",
     save = "rbxassetid://10723424838",
-    upload = "rbxassetid://10723425515",
     trash = "rbxassetid://10747384394",
     grip = "rbxassetid://10709791437",
-    bell = "rbxassetid://10709753149",
-    pipette = "rbxassetid://10734950309"
+    bell = "rbxassetid://10709753149"
 }
 
--- Палитра темы
+-- Точные насыщенные цвета стекла
 local Theme = {
-    MainGlass = Color3.fromRGB(15, 23, 42),
-    MainTransparency = 0.28,
+    MainGlass = Color3.fromRGB(15, 23, 42),       -- Deep Navy Slate
+    MainTransparency = 0.15,
     SidebarGlass = Color3.fromRGB(10, 16, 30),
-    SidebarTransparency = 0.45,
-    CardGlass = Color3.fromRGB(255, 255, 255),
-    CardTransparency = 0.95,
-    Accent = Color3.fromRGB(10, 132, 255),
+    SidebarTransparency = 0.35,
+    CardGlass = Color3.fromRGB(30, 41, 59),       -- Slate Card
+    CardTransparency = 0.45,
+    Accent = Color3.fromRGB(10, 132, 255),        -- Apple Blue
     AccentGlow = Color3.fromRGB(90, 200, 250),
     Text = Color3.fromRGB(245, 245, 247),
     SubText = Color3.fromRGB(142, 142, 147),
@@ -80,15 +73,13 @@ local Theme = {
     Danger = Color3.fromRGB(255, 69, 58)
 }
 
--- Анимации
 local function tween(object, properties, duration, style, direction)
-    local info = TweenInfo.new(duration or 0.35, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out)
+    local info = TweenInfo.new(duration or 0.3, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out)
     local anim = TweenService:Create(object, info, properties)
     anim:Play()
     return anim
 end
 
--- Эффект жидкого стекла
 local function applyGlass(instance, cornerRadius, strokeTransparency)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = cornerRadius or UDim.new(0, 16)
@@ -118,7 +109,6 @@ local function applyGlass(instance, cornerRadius, strokeTransparency)
     return stroke
 end
 
--- Перетаскивание
 local function makeDraggable(frame, handle, onDragEnd)
     local dragging, dragInput, dragStart, startPos
     local hasMoved = false
@@ -148,15 +138,12 @@ local function makeDraggable(frame, handle, onDragEnd)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
-                hasMoved = true
-            end
+            if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then hasMoved = true end
             frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 end
 
--- Растягивание
 local function makeResizable(frame, handle, minWidth, minHeight)
     minWidth = minWidth or 180
     minHeight = minHeight or 95
@@ -167,7 +154,6 @@ local function makeResizable(frame, handle, minWidth, minHeight)
             resizing = true
             dragStart = input.Position
             startSize = frame.AbsoluteSize
-
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then resizing = false end
             end)
@@ -188,7 +174,6 @@ local function makeResizable(frame, handle, minWidth, minHeight)
     end)
 end
 
--- Звуки
 local function playSound(type)
     local s = Instance.new("Sound")
     s.Volume = 0.5
@@ -214,7 +199,7 @@ local function playSound(type)
     s.Ended:Connect(function() s:Destroy() end)
 end
 
--- ================= ИНТРО APPLE "HELLO" =================
+-- Интро Apple
 function LiquidGlass:PlayIntro()
     local bootScreen = Instance.new("Frame")
     bootScreen.Size = UDim2.new(1, 0, 1, 0)
@@ -258,13 +243,13 @@ function LiquidGlass:PlayIntro()
 end
 task.spawn(function() LiquidGlass:PlayIntro() end)
 
--- ================= УВЕДОМЛЕНИЯ =================
+-- Уведомления
 function LiquidGlass:Notify(title, desc)
     local toast = Instance.new("Frame")
     toast.Size = UDim2.new(0, 280, 0, 56)
     toast.Position = UDim2.new(1, 20, 1, -76)
     toast.BackgroundColor3 = Theme.MainGlass
-    toast.BackgroundTransparency = 0.25
+    toast.BackgroundTransparency = 0.15
     toast.ClipsDescendants = true
     toast.ZIndex = 90
     toast.Parent = ScreenGui
@@ -310,7 +295,7 @@ function LiquidGlass:Notify(title, desc)
     end)
 end
 
--- ================= ДИАЛОГ ПРЕДУПРЕЖДЕНИЯ =================
+-- Диалог подтверждения
 local function openConfirmDialog(title, desc, onConfirm)
     playSound("3Bell")
     local backdrop = Instance.new("Frame")
@@ -324,7 +309,7 @@ local function openConfirmDialog(title, desc, onConfirm)
     modal.Size = UDim2.new(0, 360, 0, 195)
     modal.Position = UDim2.new(0.5, -180, 0.5, -97)
     modal.BackgroundColor3 = Theme.MainGlass
-    modal.BackgroundTransparency = 0.2
+    modal.BackgroundTransparency = 0.15
     modal.ClipsDescendants = true
     modal.ZIndex = 151
     modal.Parent = backdrop
@@ -407,17 +392,17 @@ function LiquidGlass:CreateWindow(config)
 
     local Window = { Tabs = {}, ActiveTab = nil, Minimized = false }
 
-    -- Главное окно (840x550)
+    -- Главное окно
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 840, 0, 550)
-    MainFrame.Position = UDim2.new(0.5, -420, 0.5, -275)
+    MainFrame.Size = UDim2.new(0, 800, 0, 520)
+    MainFrame.Position = UDim2.new(0.5, -400, 0.5, -260)
     MainFrame.BackgroundColor3 = Theme.MainGlass
     MainFrame.BackgroundTransparency = Theme.MainTransparency
     MainFrame.ClipsDescendants = true
     MainFrame.ZIndex = 10
     MainFrame.Parent = ScreenGui
-    applyGlass(MainFrame, UDim.new(0, 28), 0.7)
+    applyGlass(MainFrame, UDim.new(0, 20), 0.7)
 
     -- Dynamic Island
     local Island = Instance.new("Frame")
@@ -458,7 +443,7 @@ function LiquidGlass:CreateWindow(config)
     IslandStatus.Position = UDim2.new(0, 54, 0, 19)
     IslandStatus.BackgroundTransparency = 1
     IslandStatus.Font = Enum.Font.GothamMedium
-    IslandStatus.Text = "● " .. tostring(LiquidGlass.ActiveFeatureCount) .. " Active"
+    IslandStatus.Text = "● Active"
     IslandStatus.TextColor3 = Theme.Success
     IslandStatus.TextSize = 9
     IslandStatus.TextXAlignment = Enum.TextXAlignment.Left
@@ -508,7 +493,7 @@ function LiquidGlass:CreateWindow(config)
 
     -- Topbar
     local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, 0, 0, 54)
+    TopBar.Size = UDim2.new(1, 0, 0, 50)
     TopBar.BackgroundTransparency = 1
     TopBar.ZIndex = 11
     TopBar.Parent = MainFrame
@@ -516,7 +501,7 @@ function LiquidGlass:CreateWindow(config)
 
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 12, 0, 12)
-    CloseBtn.Position = UDim2.new(0, 20, 0, 21)
+    CloseBtn.Position = UDim2.new(0, 18, 0, 19)
     CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 95, 86)
     CloseBtn.Text = ""
     CloseBtn.AutoButtonColor = false
@@ -527,7 +512,7 @@ function LiquidGlass:CreateWindow(config)
 
     local MinimizeBtn = Instance.new("TextButton")
     MinimizeBtn.Size = UDim2.new(0, 12, 0, 12)
-    MinimizeBtn.Position = UDim2.new(0, 40, 0, 21)
+    MinimizeBtn.Position = UDim2.new(0, 36, 0, 19)
     MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 189, 46)
     MinimizeBtn.Text = ""
     MinimizeBtn.AutoButtonColor = false
@@ -537,7 +522,7 @@ function LiquidGlass:CreateWindow(config)
 
     local FullBtn = Instance.new("TextButton")
     FullBtn.Size = UDim2.new(0, 12, 0, 12)
-    FullBtn.Position = UDim2.new(0, 60, 0, 21)
+    FullBtn.Position = UDim2.new(0, 54, 0, 19)
     FullBtn.BackgroundColor3 = Color3.fromRGB(39, 201, 63)
     FullBtn.Text = ""
     FullBtn.AutoButtonColor = false
@@ -546,8 +531,8 @@ function LiquidGlass:CreateWindow(config)
     applyGlass(FullBtn, UDim.new(1, 0), 0.2)
 
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, -90, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 82, 0, 0)
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 74, 0, 0)
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.Font = Enum.Font.Gotham
     TitleLabel.RichText = true
@@ -556,22 +541,22 @@ function LiquidGlass:CreateWindow(config)
     TitleLabel.ZIndex = 12
     TitleLabel.Parent = TopBar
 
-    -- Body Container
+    -- Контейнер тела
     local Body = Instance.new("Frame")
-    Body.Size = UDim2.new(1, -32, 1, -70)
-    Body.Position = UDim2.new(0, 16, 0, 54)
+    Body.Size = UDim2.new(1, -32, 1, -66)
+    Body.Position = UDim2.new(0, 16, 0, 50)
     Body.BackgroundTransparency = 1
     Body.ZIndex = 11
     Body.Parent = MainFrame
 
-    -- Sidebar
+    -- Сайдбар
     local Sidebar = Instance.new("Frame")
-    Sidebar.Size = UDim2.new(0, 215, 1, 0)
+    Sidebar.Size = UDim2.new(0, 200, 1, 0)
     Sidebar.BackgroundColor3 = Theme.SidebarGlass
     Sidebar.BackgroundTransparency = Theme.SidebarTransparency
     Sidebar.ZIndex = 11
     Sidebar.Parent = Body
-    applyGlass(Sidebar, UDim.new(0, 20), 0.75)
+    applyGlass(Sidebar, UDim.new(0, 18), 0.75)
 
     -- Поисковая строка
     local SearchBoxFrame = Instance.new("Frame")
@@ -581,7 +566,7 @@ function LiquidGlass:CreateWindow(config)
     SearchBoxFrame.BackgroundTransparency = 0.94
     SearchBoxFrame.ZIndex = 12
     SearchBoxFrame.Parent = Sidebar
-    applyGlass(SearchBoxFrame, UDim.new(0, 12), 0.8)
+    applyGlass(SearchBoxFrame, UDim.new(0, 10), 0.8)
 
     local SearchIcon = Instance.new("ImageLabel")
     SearchIcon.Size = UDim2.new(0, 14, 0, 14)
@@ -627,11 +612,11 @@ function LiquidGlass:CreateWindow(config)
     UserCard.BackgroundTransparency = 0.95
     UserCard.ZIndex = 12
     UserCard.Parent = Sidebar
-    applyGlass(UserCard, UDim.new(0, 14), 0.8)
+    applyGlass(UserCard, UDim.new(0, 12), 0.8)
 
     local UserAvatar = Instance.new("ImageLabel")
-    UserAvatar.Size = UDim2.new(0, 30, 0, 30)
-    UserAvatar.Position = UDim2.new(0, 8, 0.5, -15)
+    UserAvatar.Size = UDim2.new(0, 28, 0, 28)
+    UserAvatar.Position = UDim2.new(0, 8, 0.5, -14)
     UserAvatar.BackgroundTransparency = 1
     UserAvatar.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
     UserAvatar.ZIndex = 13
@@ -642,7 +627,7 @@ function LiquidGlass:CreateWindow(config)
 
     local UserName = Instance.new("TextLabel")
     UserName.Size = UDim2.new(1, -44, 0, 14)
-    UserName.Position = UDim2.new(0, 44, 0, 8)
+    UserName.Position = UDim2.new(0, 42, 0, 8)
     UserName.BackgroundTransparency = 1
     UserName.Font = Enum.Font.GothamBold
     UserName.Text = LocalPlayer.DisplayName
@@ -654,7 +639,7 @@ function LiquidGlass:CreateWindow(config)
 
     local UserTag = Instance.new("TextLabel")
     UserTag.Size = UDim2.new(1, -44, 0, 12)
-    UserTag.Position = UDim2.new(0, 44, 0, 22)
+    UserTag.Position = UDim2.new(0, 42, 0, 22)
     UserTag.BackgroundTransparency = 1
     UserTag.Font = Enum.Font.GothamMedium
     UserTag.Text = "@" .. LocalPlayer.Name
@@ -664,10 +649,10 @@ function LiquidGlass:CreateWindow(config)
     UserTag.ZIndex = 13
     UserTag.Parent = UserCard
 
-    -- Контейнер страниц
+    -- Контейнер страниц контента
     local PageContainer = Instance.new("Frame")
-    PageContainer.Size = UDim2.new(1, -231, 1, 0)
-    PageContainer.Position = UDim2.new(0, 231, 0, 0)
+    PageContainer.Size = UDim2.new(1, -212, 1, 0)
+    PageContainer.Position = UDim2.new(0, 212, 0, 0)
     PageContainer.BackgroundTransparency = 1
     PageContainer.ZIndex = 11
     PageContainer.Parent = Body
@@ -679,11 +664,11 @@ function LiquidGlass:CreateWindow(config)
         if Window.Minimized then
             playSound("Island")
             Island.Visible = true
-            tween(MainFrame, {Position = UDim2.new(0.5, -420, 0, -600), BackgroundTransparency = 1}, 0.5)
+            tween(MainFrame, {Position = UDim2.new(0.5, -400, 0, -600), BackgroundTransparency = 1}, 0.5)
             tween(Island, {Size = UDim2.new(0, 215, 0, 36)}, 0.45, Enum.EasingStyle.Back)
         else
             playSound("Island")
-            tween(MainFrame, {Position = UDim2.new(0.5, -420, 0.5, -275), BackgroundTransparency = Theme.MainTransparency}, 0.5)
+            tween(MainFrame, {Position = UDim2.new(0.5, -400, 0.5, -260), BackgroundTransparency = Theme.MainTransparency}, 0.5)
             task.delay(0.15, function()
                 if not Window.Minimized then Island.Visible = false end
             end)
@@ -706,7 +691,7 @@ function LiquidGlass:CreateWindow(config)
         end
     end)
 
-    -- ================= СИСТЕМА ТАБОВ =================
+    -- ================= ТАБЫ =================
     function Window:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local Name = tabConfig.Name or "Tab"
@@ -719,6 +704,8 @@ function LiquidGlass:CreateWindow(config)
         Page.BackgroundTransparency = 1
         Page.ScrollBarThickness = 2
         Page.ScrollBarImageColor3 = Color3.fromRGB(140, 150, 170)
+        Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        Page.CanvasSize = UDim2.new(0, 0, 0, 0)
         Page.Visible = false
         Page.ZIndex = 12
         Page.Parent = PageContainer
@@ -727,10 +714,6 @@ function LiquidGlass:CreateWindow(config)
         pLayout.Padding = UDim.new(0, 10)
         pLayout.SortOrder = Enum.SortOrder.LayoutOrder
         pLayout.Parent = Page
-
-        pLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            Page.CanvasSize = UDim2.new(0, 0, 0, pLayout.AbsoluteContentSize.Y + 20)
-        end)
 
         local TabBtn = Instance.new("TextButton")
         TabBtn.Size = UDim2.new(1, 0, 0, 36)
@@ -741,12 +724,12 @@ function LiquidGlass:CreateWindow(config)
         TabBtn.ZIndex = 13
         TabBtn.Parent = TabScroll
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 12)
+        btnCorner.CornerRadius = UDim.new(0, 10)
         btnCorner.Parent = TabBtn
 
         local TabIcon = Instance.new("ImageLabel")
         TabIcon.Size = UDim2.new(0, 16, 0, 16)
-        TabIcon.Position = UDim2.new(0, 12, 0.5, -8)
+        TabIcon.Position = UDim2.new(0, 10, 0.5, -8)
         TabIcon.BackgroundTransparency = 1
         TabIcon.Image = Icon
         TabIcon.ImageColor3 = Theme.SubText
@@ -754,8 +737,8 @@ function LiquidGlass:CreateWindow(config)
         TabIcon.Parent = TabBtn
 
         local TabTitle = Instance.new("TextLabel")
-        TabTitle.Size = UDim2.new(1, -38, 1, 0)
-        TabTitle.Position = UDim2.new(0, 38, 0, 0)
+        TabTitle.Size = UDim2.new(1, -36, 1, 0)
+        TabTitle.Position = UDim2.new(0, 34, 0, 0)
         TabTitle.BackgroundTransparency = 1
         TabTitle.Font = Enum.Font.GothamMedium
         TabTitle.Text = Name
@@ -788,7 +771,7 @@ function LiquidGlass:CreateWindow(config)
         table.insert(Window.Tabs, Tab)
         if #Window.Tabs == 1 then activate() end
 
-        -- 1. Секция
+        -- Секция
         function Tab:CreateSection(text)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
             local SecLbl = Instance.new("TextLabel")
@@ -804,7 +787,7 @@ function LiquidGlass:CreateWindow(config)
             SecLbl.Parent = Page
         end
 
-        -- 2. Toggle с Кейбиндом
+        -- Переключатель
         function Tab:CreateToggle(tglConfig)
             tglConfig = tglConfig or {}
             local Title = tglConfig.Name or "Toggle"
@@ -817,13 +800,13 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, 0, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
             Frame.ZIndex = 12
             Frame.Parent = Page
-            applyGlass(Frame, UDim.new(0, 16), 0.85)
+            applyGlass(Frame, UDim.new(0, 14), 0.85)
 
             local Lbl = Instance.new("TextLabel")
             Lbl.Size = UDim2.new(1, -130, 0, 18)
@@ -919,7 +902,7 @@ function LiquidGlass:CreateWindow(config)
             table.insert(Tab.Elements, { Frame = Frame, Name = Title })
         end
 
-        -- 3. Слайдер (Liquid Slider)
+        -- Слайдер
         function Tab:CreateSlider(sldConfig)
             sldConfig = sldConfig or {}
             local Title = sldConfig.Name or "Slider"
@@ -934,13 +917,13 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, 0, 0, 72)
+            Frame.Size = UDim2.new(1, -6, 0, 72)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
             Frame.ZIndex = 12
             Frame.Parent = Page
-            applyGlass(Frame, UDim.new(0, 16), 0.85)
+            applyGlass(Frame, UDim.new(0, 14), 0.85)
 
             local Lbl = Instance.new("TextLabel")
             Lbl.Size = UDim2.new(1, -90, 0, 18)
@@ -1045,12 +1028,12 @@ function LiquidGlass:CreateWindow(config)
             table.insert(Tab.Elements, { Frame = Frame, Name = Title })
         end
 
-        -- 4. Раскрывающийся аккордеон (Aimbot Assistant в Combat)
+        -- Аккордеон Aimbot
         function Tab:CreateAimbotAccordion()
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, 0, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.ClipsDescendants = true
@@ -1099,37 +1082,18 @@ function LiquidGlass:CreateWindow(config)
             Chevron.ZIndex = 14
             Chevron.Parent = Header
 
-            -- Sub-settings Drawer
-            local Drawer = Instance.new("Frame")
-            Drawer.Size = UDim2.new(1, 0, 0, 160)
-            Drawer.Position = UDim2.new(0, 0, 0, 56)
-            Drawer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            Drawer.BackgroundTransparency = 0.78
-            Drawer.ZIndex = 13
-            Drawer.Parent = Frame
-
-            local dLayout = Instance.new("UIListLayout")
-            dLayout.Padding = UDim.new(0, 8)
-            dLayout.Parent = Drawer
-
-            local dPadding = Instance.new("UIPadding")
-            dPadding.PaddingLeft = UDim.new(0, 16)
-            dPadding.PaddingRight = UDim.new(0, 16)
-            dPadding.PaddingTop = UDim.new(0, 8)
-            dPadding.Parent = Drawer
-
             local isExpanded = false
             Header.MouseButton1Click:Connect(function()
                 playSound("Tap")
                 isExpanded = not isExpanded
                 tween(Chevron, {Rotation = isExpanded and 180 or 0}, 0.3)
-                tween(Frame, {Size = isExpanded and UDim2.new(1, 0, 0, 220) or UDim2.new(1, 0, 0, 56)}, 0.35)
+                tween(Frame, {Size = isExpanded and UDim2.new(1, -6, 0, 220) or UDim2.new(1, -6, 0, 56)}, 0.35)
             end)
 
             table.insert(Tab.Elements, { Frame = Frame, Name = "Aimbot Assistant" })
         end
 
-        -- 5. Кнопка действия (Action Button)
+        -- Кнопка
         function Tab:CreateButton(btnConfig)
             btnConfig = btnConfig or {}
             local Title = btnConfig.Name or "Button"
@@ -1140,13 +1104,13 @@ function LiquidGlass:CreateWindow(config)
             Tab.LayoutCounter = Tab.LayoutCounter + 1
 
             local Frame = Instance.new("Frame")
-            Frame.Size = UDim2.new(1, 0, 0, 56)
+            Frame.Size = UDim2.new(1, -6, 0, 56)
             Frame.BackgroundColor3 = Theme.CardGlass
             Frame.BackgroundTransparency = Theme.CardTransparency
             Frame.LayoutOrder = Tab.LayoutCounter
             Frame.ZIndex = 12
             Frame.Parent = Page
-            applyGlass(Frame, UDim.new(0, 16), 0.85)
+            applyGlass(Frame, UDim.new(0, 14), 0.85)
 
             local Lbl = Instance.new("TextLabel")
             Lbl.Size = UDim2.new(1, -130, 0, 18)
@@ -1214,7 +1178,7 @@ function LiquidGlass:CreateWindow(config)
     return Window
 end
 
--- ================= ПЛАВАЮЩИЕ ОКНА (KEYBINDS & TELEMETRY) =================
+-- ================= ПЛАВАЮЩИЕ ОКНА =================
 -- 1. Keybinds Window
 local KeybindsWin = Instance.new("Frame")
 KeybindsWin.Size = UDim2.new(0, 220, 0, 145)
